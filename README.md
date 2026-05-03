@@ -1,7 +1,13 @@
 # - Assignment 5
 
 # - Import Stuff
+import zipimport
 import random
+import time
+
+# - Time
+starttime = time.time()
+totaltime = 600
 
 # - Player's State
 xpos = 0 # - Tracking horizantal movement
@@ -9,6 +15,11 @@ ypos = 0 # - Tracking vertical movement
 health = 100 # - Tracking health. If health is <= 0, player dies.
 gold = 0 # - Tracks currency.
 gameon = True # - If game is still continued or not.
+pressure = 0 # - Tracks the amount of pressure (having 100 pressure makes the player lose their sanity.)
+corruption = 0 # - Player is crystallized and unable to move if corruption reaches 100.
+food = 0 # - Tracks the user's hunger.
+water = 0 # - Tracks the user's thirst.
+stamina = 150 # - Tracks the user's stamina. Having no stamina means that you're unable to continue.
 
 # - Player's Items
 shovel = False # - Used to find key.
@@ -19,8 +30,12 @@ keyevent = False # - When player finds key, it is set to true.
 rpsevent = False # - When player encounters RPS, it is set to true.
 healevent = False # - When player buys items for health, it is set to true.
 gambleevent = False # - When player buys items for health, it is set to true.
+corruptflag = False
+storyevent = 0 # - Will play an event after every few moves, to enhance gameplay.
+visited = 0 # - Tracks how much said user has travelled
+restevent = False # - Used so making decision is not interfered with visited variable.
 
-# - Introduction - Game Title Design
+# - Introduction - Game Title Design and Story
 print("░▒▓███████▓▒░ ░▒▓██████▓▒░       ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░       ░▒▓██████▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓████████▓▒░ ")
 print("░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░")
 print("░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░")
@@ -28,9 +43,36 @@ print("░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█�
 print("░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░          ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░     ")
 print("░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░          ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░")
 print("░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░        ░▒▓█████████████▓▒░░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░           ░▒▓██████▓▒░ ░▒▓██████▓▒░   ░▒▓█▓▒░     ")
+print("\nYou wake up alone underground with no memory of how you got there. The air is cold and still, and the only light comes from the feint dim coming from the rubble above you. There is no visible entrance nor exit, only a small space with none left to spare. It seems as if searching for a way out only leads you further and further into a spiral. The path seems to dim and change every now and then when you becoime unattentive to your surroundings. All you can rely on is yourself. Trust no one. Hear no evil, see no evil.")
 
 # - Game Loop
 while gameon:
+
+  # - Timer Display
+  elapsed = int(time.time() - starttime)
+  remaining = totaltime - elapsed
+
+  if remaining <= 0:
+    print("\n[TIMER] 00:00")
+    print("\nYou've been consumed by the corruption, you lost.")
+    break
+
+  minutes = remaining // 60
+  secs = remaining % 60
+
+  print(f"\r\nYou have {minutes:02}:{secs:02} before the [Corruption] is achieved.")
+
+  # - Corruption
+  if corruption >= 100:
+    print("\nThe corruption overwhelms you completely..")
+    print("\nYou've lost yourself into the abyss")
+    break
+
+  # - Pressure
+  if pressure >= 100:
+    print("\nYou can't take it anymore; the pressure has made you lose your sanity., mission failed.")
+    break
+    
   # - Health
   if health <= 0:
     print("\nYou've been defeated, mission failed.")
@@ -38,23 +80,31 @@ while gameon:
 
   # - Gold
   if gold <= -200:
-    print("You've become broke, and reached the point of no return, mission failed.")
+    print("\nYou've become broke, and reached the point of no return, mission failed.")
+    break
+
+  # - Stamina
+  if stamina <= 0:
+    print("\nYou've lost your grip, your physical body cannot keep up.")
     break
 
   # - Player Stats Displayed
   print("\nYour current position is: " + "(" + str(xpos) + ", " + str(ypos) + ")")
-  print("\nHP: " + str(health) + " | " + "Gold: " + str(gold))
+  print("\nHP: " + str(health) + " | " + "Gold: " + str(gold) + " | " + "Corruption: " + str(corruption) + " | " + "Pressure: " + str(pressure))
+  print("\nFood: " + str(food) + " | " + "Water: " + str(water) + " | " + "Stamina: " + str(stamina))
   print("\nInventory: ", end = "")
+  
   if shovel == True and key == False:
     print("Shovel")
   elif key == True and shovel == False:
     print("Key")
   elif shovel == True and key == True:
     print("Shovel, Key")
-  if key == False and shovel == False:
-    print("Nothing")
   else:
-    print("")
+    print("Nothing")
+    
+  if pressure >= 80 or corruption >= 80:
+    print("\nYou may be undergoing an immense problem.")
 
   print("\n-------------------------------------------------------------------------")
 
@@ -63,26 +113,116 @@ while gameon:
   if move == "4": # - Player moves left.
     if xpos > -3:
       xpos -= 1
+      pressure += 1
+      visited += 1
+      stamina -= 1
     else:
       print("\nYou can't go that way.")
   elif move == "6": # - Player moves right.
     if xpos < 3:
       xpos += 1
+      pressure += 1
+      visited += 1
+      stamina -= 1
     else:
       print("\nYou can't go that way.")
   elif move == "8": # - Player moves up.
     if ypos < 3:
       ypos += 1
+      pressure += 1
+      visited += 1
+      stamina -= 1
     else:
       print("\nYou can't go that way.")
   elif move == "2": # - Player moves down.
     if ypos > 0:
       ypos -= 1
+      pressure += 1
+      visited += 1
+      stamina -= 1
     else:
       print("\nYou can't go that way.")
   else:
     print("\nSorry, that is not a valid move. Please try again. ") # - Player isn't following an instruction, so it is inquired to retry.
 
+  # - Player Restoration Mechanics
+  if (visited % 5) == 0 and visited != 0 and restevent == False:
+    restevent = True
+    print("\nYou've went through a bit, what would you like to do?")
+
+    print("\n7 => Replenish your hunger (-2 Pressure")
+    print("\n9 => Satiate your thirst (-2 Corruption)")
+    print("\n1 => Make a wish to the gods (+10 Gold)")
+    print("\n3 => Build endurance (+3 stamina)")
+
+    decision = input("What will you choose?\n\n")
+    if decision == "7":
+      food -= 1
+      pressure -= 2
+      print("\nYou ate a good, hearty meal.")
+    elif decision == "9":
+      water -= 1
+      corruption -= 2
+      print("\nYou drank holy water. Your mind begins to ease.")
+    elif decision == "1":
+      gold += 10
+      print("\nCoins fall from the sky. Your prayers have been anwswered.")
+    elif decision == "3":
+      stamina += 3
+      print("\nYou build endurance through exercise.")
+
+  if (visited % 5) != 0:
+    restevent = False
+
+  # - Story Event
+  if (visited % 3) == 0 and visited != 0:
+    story = random.randint(1, 15) # - Tracks how much user explored to tell story
+    # - FYI, these texts are made to enhance story, however prompts were generated by ChatGPT.
+    if story == 1:
+      print("\nYou notice strange markings on the wall - symbols that almost seem familiar.")
+    elif story == 2:
+      pressure += 1
+      print("\nYou hear screams, noises, and scratches from behind... It makes you feel eerie...")
+    elif story == 3:
+      health += 5
+      corruption -= 5
+      print("\nYou found an abandoned cabin... there seems to be some supplies inside!")
+    elif story == 4:
+      corruption += 5
+      print("\nTurn back... this place is full of miasma...")
+    elif story == 5:
+      corruption -= 10
+      print("\nYou arrive in a room that seems empty. You're thirsty, so you drink the water that was placed on the table. The corruption eases.")
+    elif story == 6:
+      print("\nSomething's wrong.")
+    elif story == 7:
+      print("\nYou see visions of your family, seemingly near yet so far...")
+    elif story == 8:
+      print("\nThere's no point. There is no escape. Just give up.")
+    elif story == 9:
+      gold -= 30
+      health += 20
+      print("\nYou meet an adventurer. Seeing your wound, he offers a package of bandages in exchange for 30 gold.")
+    elif story == 10:
+      corruption += 5
+      print("\nYou accidentally inhaled miasma.")
+    elif story == 11:
+      corruption -= 20
+      pressure -= 10
+      print("\nYou find a cross. Grasping on to it, your mind seems to calm down as you pray for help.")
+    elif story == 12:
+      pressure += 5
+      health += 10
+      print("\nYou see someone die to a wolf. You run away successfully, but you're physically tired. The wolf died however, and drops its meat and fur you can use for protection.")
+    elif story == 13:
+      print("\nYou dream of an escape. A guiding light hints towards two specific coordinates.. (3, 2) and (-3, 2).")
+    elif story == 14:
+      pressure -= 5
+      gold += 15
+      print("\nYou pass by a wanderer. He gives you some gold in wishes for your success.")
+    else:
+      print("\nYou're bored. Might as well continue travelling.")
+    
   # - Exit 1 (FAKE EXIT)
   if xpos == -3 and ypos == 2:
     print("\nLight shimmers from the door, as if you've found the exit.")
@@ -254,23 +394,57 @@ while gameon:
     
   # - Miscellenous Events
   if (xpos, ypos) in [(-2, 0), (-1, 0), (1, 0), (2, 0), (-3, 0), (-3, 1), (-1, 1), (1, 1), (2, 1), (3, 1), (-2, 2), (-1, 2), (0, 2), (2, 2), (-2,3), (-1, 3), (0, 3), (1, 3), (2, 3), (3, 3)]:
-    otherevent = random.choice(["wind", "gold", "trap", "nothing", "herbs"])
+    otherevent = random.choice(["wind", "gold", "trap", "nothing", "herbs", "corrupt", "relief", "food", "water", "stamina"])
+    
     if otherevent == "wind": # - First bad event
       health -= 5
       print("\nThe wind hit you.") 
+      
     elif otherevent == "gold": # - First good event
       gold += 5
       print("\nYou found some gold!") 
+      
     elif otherevent == "trap": # - Second bad event
       health -= 10
       print("\nYou fell for a trap...") 
+
+    elif otherevent == "relief": # - Third good event
+      pressure -= 5
+      print("\nYou've calmed down a bit.")
+      
     elif otherevent == "herbs": # - Second good event
       health += 5
       print("\nYou found some herbs, your wound slowly closes.")
+
+    elif otherevent == "food": # - Replenish hunger
+      food += 1
+      print("\nYou found some food!")
+
+    elif otherevent == "water": # - Satiate thirst
+      water += 1
+      print("\nYou found some water!")
+
+    elif otherevent == "stamina": # - Build player endurance
+      stamina += 5
+      pressure -= 3
+      print("\nYou're tired.. but at least you got something out of it I guess... you can't keep doing this though.")
+      
+    elif otherevent == "corrupt": # - Third bad event
+      if corruptflag == False:
+        timepenalty = random.randint(10, 30)
+        totaltime -= timepenalty
+        corruptiongain = random.randint(5, 10)
+        corruption += corruptiongain
+        corruptflag = True
+        print("\nThe corruption seeps into your mind.")
+        print("\nTime dilates, and crystals form.")
+      else:
+        timepenalty = random.randint(1, 3)
+        totaltime -= timepenalty
+        corruptiongain = random.randint(5, 10)
+        corruption += corruptiongain
+        print("\nThe corruption seeps into your mind.")
+        print("\nTime dilates, and crystals form.")    
+      
     else: # - Neutral event
       print("\nThere's nothing here.") 
-      
-
-
-  
-  
